@@ -25,8 +25,8 @@ function getQueryClient() {
 function getUrl() {
   const base = (() => {
     if (typeof window !== 'undefined') return '';
-
-    return process.env.NEXT_PUBLIC_APP_URL;
+    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+    return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   })();
   return `${base}/api/trpc`;
 }
@@ -46,6 +46,11 @@ export function TRPCReactProvider(
         httpBatchLink({
           transformer: superjson, 
           url: getUrl(),
+          headers() {
+            const headers = new Map<string, string>();
+            headers.set('x-trpc-source', 'nextjs-react');
+            return Object.fromEntries(headers);
+          },
         }),
       ],
     }),
