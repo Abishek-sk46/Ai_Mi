@@ -95,9 +95,16 @@ const AssistantMessage = ( {
             </div>
 
             <div className="pl-8.5 flex flex-col gap-y-4">
-                <span>{content}</span>
-                
-            </div>
+  <span>{content}</span>
+
+  {fragment && (
+    <FragmentCard
+      fragment={fragment}
+      isActiveFragment={isActiveFragment}
+      onFragmentClick={onFragmentClick}
+    />
+  )}
+</div>
 
         </div>
     )
