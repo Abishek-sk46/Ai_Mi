@@ -7,38 +7,48 @@ import { TRPCError } from "@trpc/server";
 
 
 export const projectsRouter = createTRPCRouter({
- 
-    getOne: baseProcedure
-     .input(z.object({
-     id: z.string().min(1, { message: "Message ID is required" }),
-     }))
+
+  getMany: baseProcedure
+    .query(async () => {
+      const projects = await prisma.project.findMany({
+
+        orderBy: {
+          updatedAt: "desc",
+        },
+      });
 
 
 
+      return projects;
+    }),
 
+  getOne: baseProcedure
+    .input(z.object({
+      id: z.string().min(1, { message: "Project ID is required" }),
+    }))
     .query(async ({ input }) => {
-      const exisitingProject = await prisma.project.findUnique({
+      const project = await prisma.project.findUnique({
         where: {
           id: input.id,
         },
       });
 
-      if (!exisitingProject) {
-        throw new TRPCError( { code: "NOT_FOUND", message: "Project not found" } );
+      if (!project) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Project not found",
+        });
       }
-      
-      return exisitingProject;
+
+      return project;
     }),
-
-
-
 
   create: baseProcedure
     .input(
       z.object({
         value: z.string()
-        .min(1, {message: "Value is required"})
-        .max(1000, { message: "Value is too long "}),
+          .min(1, { message: "Value is required" })
+          .max(1000, { message: "Value is too long " }),
 
       }),
 
@@ -46,11 +56,11 @@ export const projectsRouter = createTRPCRouter({
     .mutation(async ({ input }) => {
       const createdProject = await prisma.project.create({
         data: {
-          name: generateSlug(2,{
+          name: generateSlug(2, {
             format: "kebab",
 
           }),
-          messages:{
+          messages: {
             create: {
               content: input.value,
               role: "USER",
@@ -61,15 +71,15 @@ export const projectsRouter = createTRPCRouter({
       });
 
 
-      
 
-    await inngest.send({
-        name:"code-agent/run",
+
+      await inngest.send({
+        name: "code-agent/run",
         data: {
-            value: input.value,
-            projectId: createdProject.id,
+          value: input.value,
+          projectId: createdProject.id,
         },
-    });
+      });
 
 
       return createdProject;
