@@ -47,7 +47,7 @@ export const ProjectView = ({ projectId }: Props) => {
                     </Suspense>
 
                 </ResizablePanel>
-                <ResizableHandle withHandle />
+                <ResizableHandle />
                 <ResizablePanel
                     defaultSize={65}
                     minSize={50}>
