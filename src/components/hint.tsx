@@ -11,28 +11,28 @@ import {
 interface HintProps {
     children: React.ReactNode;
     text: string;
-    side? : "top" | "right" | "bottom" | "left";
-    align? : "start" | "center" | "end";
+    side?: "top" | "right" | "bottom" | "left";
+    align?: "start" | "center" | "end";
 
 };
 
 export const Hint = ({
     children,
     text,
-    side= "top",
+    side = "top",
     align = "center"
 
 }: HintProps) => {
     return (
         <TooltipProvider>
-        <Tooltip>
-            <TooltipTrigger>
-                {children}
-            </TooltipTrigger>
-            <TooltipContent side={side} align={align}>
-                {text}
-            </TooltipContent>
-        </Tooltip>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    {children}
+                </TooltipTrigger>
+                <TooltipContent side={side} align={align}>
+                    {text}
+                </TooltipContent>
+            </Tooltip>
         </TooltipProvider>
     )
 }
