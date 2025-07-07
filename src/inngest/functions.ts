@@ -9,6 +9,7 @@ import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 import { retryLink } from "@trpc/client";
 import { title } from "process";
 import { prisma } from "@/lib/db";
+import { SANDBOX_TIMEOUT } from "./types";
 
 
 interface AgentState {
@@ -22,6 +23,7 @@ export const codeAgentFunctions = inngest.createFunction(
   async ({ event, step }) => {
     const sandboxId = await step.run("get-sandbox-id" , async () => {
       const sandbox = await Sandbox.create("vibe-prg1");
+      await sandbox.setTimeout(SANDBOX_TIMEOUT);
       return sandbox.sandboxId;
     });
 
@@ -35,6 +37,7 @@ export const codeAgentFunctions = inngest.createFunction(
           orderBy: {
             createdAt: "desc",
           },
+          take:5,
         });
 
         for( const message of messages){
@@ -45,7 +48,7 @@ export const codeAgentFunctions = inngest.createFunction(
           })
         }
 
-        return formattedMessages;
+        return formattedMessages.reverse();
       
     });
 
