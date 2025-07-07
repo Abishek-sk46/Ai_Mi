@@ -16,6 +16,7 @@ import { FileExplorer } from "@/components/file-explorer";
 import path from "path";
 import { UserControl } from "@/components/user-control";
 import { useAuth } from "@clerk/nextjs";
+import { ErrorBoundary } from "react-error-boundary";
 
 
 
@@ -40,17 +41,21 @@ export const ProjectView = ({ projectId }: Props) => {
                     minSize={20}
                     className="flex flex-col min-h-0">
 
-                    <Suspense fallback={<p>Loading project...</p>}>
-                        <ProjectHeader projectId={projectId} />
-                    </Suspense>
+                    <ErrorBoundary fallback={<p>Project header error</p>}>
+                        <Suspense fallback={<p>Loading project...</p>}>
+                            <ProjectHeader projectId={projectId} />
+                        </Suspense>
+                    </ErrorBoundary>
 
-                    <Suspense fallback={<div>Loading messages...</div>}>
-                        <MessagesContainer
-                            projectId={projectId}
-                            activeFragment={activeFragment}
-                            setActiveFragment={setActiveFragment}
-                        />
-                    </Suspense>
+                    <ErrorBoundary fallback={<p>Messages loading error</p>}>
+                        <Suspense fallback={<div>Loading messages...</div>}>
+                            <MessagesContainer
+                                projectId={projectId}
+                                activeFragment={activeFragment}
+                                setActiveFragment={setActiveFragment}
+                            />
+                        </Suspense>
+                    </ErrorBoundary>
 
                 </ResizablePanel>
                 <ResizableHandle />

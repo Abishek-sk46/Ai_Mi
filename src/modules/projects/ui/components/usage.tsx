@@ -5,6 +5,7 @@ import { formatDuration, intervalToDuration } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ms } from "date-fns/locale";
 import { useAuth } from "@clerk/nextjs";
+import { useMemo } from "react";
 
 interface Props {
     points: number;
@@ -15,6 +16,22 @@ export const Usage = ({ points, msBeforeExpire }: Props) => {
 
     const { has } = useAuth();
     const hasProAccess = has?.({ plan: "pro" });
+    const resetTime = useMemo(() => {
+        try{
+            return formatDuration(
+                intervalToDuration({
+                    start: new Date(),
+                    end: new Date(Date.now()+msBeforeExpire)
+                })
+            )
+
+        }catch (error) {
+            console.error("Error formatting duartion", error);
+            return "unknown";
+        }
+
+    }, [msBeforeExpire])
+
 
     return(
         <div className="rounded-t-xl bg-background border border-b-0 p-2.5">
@@ -24,14 +41,7 @@ export const Usage = ({ points, msBeforeExpire }: Props) => {
                         {points} {hasProAccess ? "": "free"}  credits remaining
                     </p>
                     <p className="text-xs text-muted-foreground">
-                       Resets in{" "}
-                        {formatDuration(
-                            intervalToDuration({
-                                start: new Date(),
-                                end: new Date(Date.now() + msBeforeExpire),
-                            }),
-                            { format: ["months","days", "hours"]}
-                        )} 
+                       Resets in{" "}{resetTime}
                     </p>
                 </div>
 
