@@ -12,11 +12,11 @@ export const projectsRouter = createTRPCRouter({
     .input(z.object({
       id: z.string().min(1, { message: "Project ID is required" }),
     }))
-    .query(async ({ input,ctx }) => {
+    .query(async ({ input, ctx }) => {
       const eproject = await prisma.project.findUnique({
         where: {
           id: input.id,
-          userId: ctx.auth.userId, 
+          userId: ctx.auth.userId,
         },
       });
 
@@ -46,17 +46,30 @@ export const projectsRouter = createTRPCRouter({
     }),
 
 
+  delete: protectedProcedure
+    .input(z.object({
+      ids: z.array(z.string().min(1)),
+    }))
+    .mutation(async ({ input, ctx }) => {
+      const { ids } = input;
+      const result = await prisma.project.deleteMany({
+        where: {
+          id: { in: ids },
+          userId: ctx.auth.userId,
+        },
+      });
+      return { count: result.count };
+    }),
 
 
+  // if (!project) {
+  //   throw new TRPCError({
+  //     code: "NOT_FOUND",
+  //     message: "Project not found",
+  //   });
+  // }
 
-      // if (!project) {
-      //   throw new TRPCError({
-      //     code: "NOT_FOUND",
-      //     message: "Project not found",
-      //   });
-      // }
 
-     
 
   create: protectedProcedure
     .input(
@@ -70,22 +83,22 @@ export const projectsRouter = createTRPCRouter({
     )
     .mutation(async ({ input, ctx }) => {
 
-     try{
-          await consumeCredits();
-          }catch (error) {
-            if (error instanceof Error) {
-              throw new TRPCError({
-                code: "BAD_REQUEST",
-                message: "Something went wrong",
-              });
-            }
-            else {
-              throw new TRPCError({
-                code: "TOO_MANY_REQUESTS",
-                message: "You have exceeded your free credits",
-              });
-            }
-          }
+      try {
+        await consumeCredits();
+      } catch (error) {
+        if (error instanceof Error) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Something went wrong",
+          });
+        }
+        else {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "You have exceeded your free credits",
+          });
+        }
+      }
 
 
 

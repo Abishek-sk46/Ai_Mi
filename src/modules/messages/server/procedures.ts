@@ -33,7 +33,7 @@ export const messagesRouter = createTRPCRouter({
 
 
         orderBy: {
-          updatedAt: "desc",
+          updatedAt: "asc",
         },
       });
       return messages;

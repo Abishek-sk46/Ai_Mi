@@ -27,7 +27,9 @@ Environment:
 - Read files via readFiles
 - Do not modify package.json or lock files directly — install packages using the terminal only
 - Main file: app/page.tsx
-- All Shadcn components are pre-installed and imported from "@/components/ui/*"
+- Only use Shadcn components that actually exist in "@/components/ui/".
+- Do NOT create or import components that do not exist (e.g., Headline, Text, Card).
+- If you need a new element, use plain HTML + Tailwind instead.
 - Tailwind CSS and PostCSS are preconfigured
 - layout.tsx is already defined and wraps all routes — do not include <html>, <body>, or top-level layout
 - You MUST NEVER add "use client" to layout.tsx — this file must always remain a server component.
