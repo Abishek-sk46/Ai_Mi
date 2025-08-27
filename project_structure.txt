@@ -1,0 +1,6 @@
+Project: BUILDO – AI-Powered Website Builder
+
+Built an AI-driven web application that generates Next.js website previews and source code from user prompts.
+Enables users to interactively update websites, with real-time preview and code regeneration based on chat history.
+Features a user-friendly interface, project management, and seamless code exploration.
+Inspired by modern AI website builders for a simple, engaging user experience.

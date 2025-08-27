@@ -1,15 +1,15 @@
 import z from "zod";
 import { Sandbox } from "@e2b/code-interpreter";
-import { Agent, createAgent, createNetwork, createState, createTool, gemini, Message, Tool } from "@inngest/agent-kit";
+import {  createAgent, createNetwork, createState, createTool, openai, Message, Tool } from "@inngest/agent-kit";
 
 import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 
 import { inngest } from "./client";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
-import { retryLink } from "@trpc/client";
-import { title } from "process";
+
 import { prisma } from "@/lib/db";
 import { SANDBOX_TIMEOUT } from "./types";
+import { formatCode } from "@/lib/formatCode";
 
 
 interface AgentState {
@@ -44,7 +44,7 @@ export const codeAgentFunctions = inngest.createFunction(
           formattedMessages.push({
             type: "text",
             role: message.role === "ASSISTANT" ? "assistant" : "user",
-            content: `message.content`,
+            content: message.content,
           })
         }
 
@@ -66,9 +66,9 @@ export const codeAgentFunctions = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: gemini({
-         model: "gemini-1.5-flash" ,
-         
+      model: openai({
+         model: "gpt-4o",
+         defaultParameters: { temperature: 0.5 },
         }),
       tools: [
         createTool({
@@ -125,6 +125,7 @@ export const codeAgentFunctions = inngest.createFunction(
 
               for (const file of files) {
                 file.content = sanitizeCode(file.content);
+                  file.content = await formatCode(file.content);
                 await sandbox.files.write(file.path, file.content);
                 updatedFiles[file.path] = file.content;
               }
@@ -210,8 +211,8 @@ export const codeAgentFunctions = inngest.createFunction(
       name: "fragment-title-generator",
       description: "A fragment title generator",
       system: FRAGMENT_TITLE_PROMPT,
-      model: gemini({
-        model: "gemini-1.0-pro",
+      model: openai({
+        model: "gpt-4o-mini",
       })
 
 
@@ -221,8 +222,8 @@ export const codeAgentFunctions = inngest.createFunction(
       name: "response-generator",
       description: "A response generator",
       system: RESPONSE_PROMPT,
-      model: gemini({
-        model: "gemini-1.0-pro",
+      model: openai({
+        model: "gpt-4o-mini",
       })
 
 
