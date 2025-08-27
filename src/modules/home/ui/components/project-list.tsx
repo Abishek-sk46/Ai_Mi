@@ -11,7 +11,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/client";
 import { Button } from "@/components/ui/button";
 
-export const ProjectList = () =>{
+export const ProjectList = () => {
     const trpc = useTRPC();
     const queryClient = useQueryClient();
     const { user } = useUser();
