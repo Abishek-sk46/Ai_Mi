@@ -27,6 +27,18 @@ export const codeAgentFunctions = inngest.createFunction(
       return sandbox.sandboxId;
     });
 
+    // debug
+    // After creating the sandbox
+const sandbox = await getSandbox(sandboxId);
+
+// List all files currently in the sandbox
+try {
+  const fileList = await sandbox.files.list("."); // E2B API to list files in root directory
+  console.log("🗂 Sandbox files:", fileList);
+} catch (err) {
+  console.error("❌ Could not list sandbox files:", err);
+}
+
     const previousMessages = await step.run("get-previous-messages", async () => {
       const formattedMessages: Message[] = [];
 
