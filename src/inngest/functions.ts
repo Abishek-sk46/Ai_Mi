@@ -9,7 +9,6 @@ import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 
 import { prisma } from "@/lib/db";
 import { SANDBOX_TIMEOUT } from "./types";
-import { formatCode } from "@/lib/formatCode";
 
 
 interface AgentState {
