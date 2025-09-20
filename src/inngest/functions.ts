@@ -1,15 +1,15 @@
 import z from "zod";
 import { Sandbox } from "@e2b/code-interpreter";
-import {  createAgent, createNetwork, createState, createTool, openai, Message, Tool } from "@inngest/agent-kit";
+import { Agent, createAgent, createNetwork, createState, createTool, gemini, Message, Tool } from "@inngest/agent-kit";
 
 import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 
 import { inngest } from "./client";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
-
+import { retryLink } from "@trpc/client";
+import { title } from "process";
 import { prisma } from "@/lib/db";
 import { SANDBOX_TIMEOUT } from "./types";
-import { formatCode } from "@/lib/formatCode";
 
 
 interface AgentState {
@@ -44,7 +44,7 @@ export const codeAgentFunctions = inngest.createFunction(
           formattedMessages.push({
             type: "text",
             role: message.role === "ASSISTANT" ? "assistant" : "user",
-            content: message.content,
+            content: `message.content`,
           })
         }
 
@@ -66,9 +66,9 @@ export const codeAgentFunctions = inngest.createFunction(
       name: "code-agent",
       description: "An expert coding agent",
       system: PROMPT,
-      model: openai({
-         model: "gpt-4o",
-         defaultParameters: { temperature: 0.5 },
+      model: gemini({
+         model: "gemini-1.5-flash" ,
+         
         }),
       tools: [
         createTool({
@@ -125,7 +125,6 @@ export const codeAgentFunctions = inngest.createFunction(
 
               for (const file of files) {
                 file.content = sanitizeCode(file.content);
-                  file.content = await formatCode(file.content);
                 await sandbox.files.write(file.path, file.content);
                 updatedFiles[file.path] = file.content;
               }
@@ -211,189 +210,92 @@ export const codeAgentFunctions = inngest.createFunction(
       name: "fragment-title-generator",
       description: "A fragment title generator",
       system: FRAGMENT_TITLE_PROMPT,
-      model: openai({
-        model: "gpt-4o-mini",
+      model: gemini({
+        model: "gemini-1.0-pro",
       })
 
 
     })
 
-    // const responseGenerator = createAgent({
-    //   name: "response-generator",
-    //   description: "A response generator",
-    //   system: RESPONSE_PROMPT,
-    //   model: openai({
-    //     model: "gpt-4o-mini",
-    //   })
+    const responseGenerator = createAgent({
+      name: "response-generator",
+      description: "A response generator",
+      system: RESPONSE_PROMPT,
+      model: gemini({
+        model: "gemini-1.0-pro",
+      })
 
 
-    // });
+    });
 
-    // const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
-    // const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
-    // const generateFragmentTitle = () => {
-    //   if (fragmentTitleOutput[0].type !== "text") {
-    //     return "Fragment";
-    //   }
+    const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
+    const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
+    const generateFragmentTitle = () => {
+      if (fragmentTitleOutput[0].type !== "text") {
+        return "Fragment";
+      }
 
-    //   if (Array.isArray(fragmentTitleOutput[0].content)) {
-    //     return fragmentTitleOutput[0].content.map((txt) => txt).join("")
-    //   } else{
-    //     return fragmentTitleOutput[0].content;
-    //   }
-    // }
+      if (Array.isArray(fragmentTitleOutput[0].content)) {
+        return fragmentTitleOutput[0].content.map((txt) => txt).join("")
+      } else{
+        return fragmentTitleOutput[0].content;
+      }
+    }
 
-    //   const generateResponse = () => {
-    //   if (responseOutput[0].type !== "text") {
-    //     return "Response";
-    //   }
+      const generateResponse = () => {
+      if (responseOutput[0].type !== "text") {
+        return "Response";
+      }
 
-    //   if (Array.isArray(responseOutput[0].content)) {
-    //     return responseOutput[0].content.map((txt) => txt).join("")
-    //   } else{
-    //     return responseOutput[0].content;
-    //   }
-    // }
+      if (Array.isArray(responseOutput[0].content)) {
+        return responseOutput[0].content.map((txt) => txt).join("")
+      } else{
+        return responseOutput[0].content;
+      }
+    }
 
-    // const isError = 
-    //   !result.state.data.summary ||
-    //   Object.keys(result.state.data.files || {}).length === 0;
-
-
-    // const sandboxUrl = await step.run("get-sandbox-url" , async () => {
-    //   const sandbox = await getSandbox(sandboxId);
-    //   const host = sandbox.getHost(3000);
-    //   return `https://${host}`;
-    // });
-
-    // await step.run("save-result", async () =>{
+    const isError = 
+      !result.state.data.summary ||
+      Object.keys(result.state.data.files || {}).length === 0;
 
 
-    //   if(isError){
-    //     return await prisma.message.create({
-    //       data: {
-    //         projectId: event.data.projectId,
-    //         content: "Something went wrong.Please try again",
-    //         role:"ASSISTANT",
-    //         type: "ERROR",
-    //       },
-    //     });
-    //   }
+    const sandboxUrl = await step.run("get-sandbox-url" , async () => {
+      const sandbox = await getSandbox(sandboxId);
+      const host = sandbox.getHost(3000);
+      return `https://${host}`;
+    });
+
+    await step.run("save-result", async () =>{
 
 
-    //   return await prisma.message.create({
-    //     data: {
-    //       projectId: event.data.projectId,
-    //       content : generateResponse(),
-    //       role: "ASSISTANT",
-    //       type: "RESULT",
-    //       fragments: {
-    //         create: {
-    //           sandboxUrl: sandboxUrl,
-    //           title: generateFragmentTitle(),
-    //           files: result.state.data.files,
-    //         },
-    //       },
-    //     },
-    //   })
-    // });
+      if(isError){
+        return await prisma.message.create({
+          data: {
+            projectId: event.data.projectId,
+            content: "Something went wrong.Please try again",
+            role:"ASSISTANT",
+            type: "ERROR",
+          },
+        });
+      }
 
-const responseGenerator = createAgent({
-  name: "response-generator",
-  description: "A response generator",
-  system: RESPONSE_PROMPT,
-  model: openai({
-    model: "gpt-4o-mini",
-  })
-});
 
-console.log("✅ responseGenerator created");
-
-// 🔍 Log incoming result.state.data
-console.log("📦 Incoming result.state.data:", JSON.stringify(result.state.data, null, 2));
-
-const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
-console.log("📝 Fragment title output:", fragmentTitleOutput);
-
-const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
-console.log("🤖 Response output:", responseOutput);
-
-const generateFragmentTitle = () => {
-  if (fragmentTitleOutput[0].type !== "text") {
-    return "Fragment";
-  }
-
-  if (Array.isArray(fragmentTitleOutput[0].content)) {
-    return fragmentTitleOutput[0].content.map((txt) => txt).join("");
-  } else {
-    return fragmentTitleOutput[0].content;
-  }
-};
-
-const generateResponse = () => {
-  if (responseOutput[0].type !== "text") {
-    return "Response";
-  }
-
-  if (Array.isArray(responseOutput[0].content)) {
-    return responseOutput[0].content.map((txt) => txt).join("");
-  } else {
-    return responseOutput[0].content;
-  }
-};
-
-// 🔍 Debug isError evaluation
-const isError =
-  !result.state.data.summary ||
-  Object.keys(result.state.data.files || {}).length === 0;
-
-console.log("⚠️ isError value:", isError);
-console.log("📄 Summary exists?", !!result.state.data.summary);
-console.log("📂 Files length:", Object.keys(result.state.data.files || {}).length);
-
-const sandboxUrl = await step.run("get-sandbox-url", async () => {
-  const sandbox = await getSandbox(sandboxId);
-  const host = sandbox.getHost(3000);
-  const url = `https://${host}`;
-  console.log("🌐 Sandbox URL:", url);
-  return url;
-});
-
-await step.run("save-result", async () => {
-  try {
-    if (isError) {
-      console.log("❌ Error detected: Missing summary or files");
       return await prisma.message.create({
         data: {
           projectId: event.data.projectId,
-          content: "Something went wrong. Please try again",
+          content : generateResponse(),
           role: "ASSISTANT",
-          type: "ERROR",
+          type: "RESULT",
+          fragments: {
+            create: {
+              sandboxUrl: sandboxUrl,
+              title: generateFragmentTitle(),
+              files: result.state.data.files,
+            },
+          },
         },
-      });
-    }
-
-    const responseText = generateResponse();
-    console.log("💾 About to save response:", responseText);
-
-    const saved = await prisma.message.create({
-      data: {
-        projectId: event.data.projectId,
-        content: responseText,
-        role: "ASSISTANT",
-        type: "RESULT",
-      },
+      })
     });
-
-    console.log("✅ Prisma save success:", saved);
-    return saved;
-  } catch (err) {
-    console.error("🔥 Prisma save error:", err);
-    throw err;
-  }
-});
-
-
 
 
     
