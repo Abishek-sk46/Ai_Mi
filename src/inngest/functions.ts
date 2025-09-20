@@ -145,7 +145,6 @@ try {
 
               for (const file of files) {
                 file.content = sanitizeCode(file.content);
-                  file.content = await formatCode(file.content);
                 await sandbox.files.write(file.path, file.content);
                 updatedFiles[file.path] = file.content;
               }
