@@ -218,85 +218,173 @@ export const codeAgentFunctions = inngest.createFunction(
 
     })
 
+    // const responseGenerator = createAgent({
+    //   name: "response-generator",
+    //   description: "A response generator",
+    //   system: RESPONSE_PROMPT,
+    //   model: openai({
+    //     model: "gpt-4o-mini",
+    //   })
+
+
+    // });
+
+    // const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
+    // const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
+    // const generateFragmentTitle = () => {
+    //   if (fragmentTitleOutput[0].type !== "text") {
+    //     return "Fragment";
+    //   }
+
+    //   if (Array.isArray(fragmentTitleOutput[0].content)) {
+    //     return fragmentTitleOutput[0].content.map((txt) => txt).join("")
+    //   } else{
+    //     return fragmentTitleOutput[0].content;
+    //   }
+    // }
+
+    //   const generateResponse = () => {
+    //   if (responseOutput[0].type !== "text") {
+    //     return "Response";
+    //   }
+
+    //   if (Array.isArray(responseOutput[0].content)) {
+    //     return responseOutput[0].content.map((txt) => txt).join("")
+    //   } else{
+    //     return responseOutput[0].content;
+    //   }
+    // }
+
+    // const isError = 
+    //   !result.state.data.summary ||
+    //   Object.keys(result.state.data.files || {}).length === 0;
+
+
+    // const sandboxUrl = await step.run("get-sandbox-url" , async () => {
+    //   const sandbox = await getSandbox(sandboxId);
+    //   const host = sandbox.getHost(3000);
+    //   return `https://${host}`;
+    // });
+
+    // await step.run("save-result", async () =>{
+
+
+    //   if(isError){
+    //     return await prisma.message.create({
+    //       data: {
+    //         projectId: event.data.projectId,
+    //         content: "Something went wrong.Please try again",
+    //         role:"ASSISTANT",
+    //         type: "ERROR",
+    //       },
+    //     });
+    //   }
+
+
+    //   return await prisma.message.create({
+    //     data: {
+    //       projectId: event.data.projectId,
+    //       content : generateResponse(),
+    //       role: "ASSISTANT",
+    //       type: "RESULT",
+    //       fragments: {
+    //         create: {
+    //           sandboxUrl: sandboxUrl,
+    //           title: generateFragmentTitle(),
+    //           files: result.state.data.files,
+    //         },
+    //       },
+    //     },
+    //   })
+    // });
+
     const responseGenerator = createAgent({
-      name: "response-generator",
-      description: "A response generator",
-      system: RESPONSE_PROMPT,
-      model: openai({
-        model: "gpt-4o-mini",
-      })
+  name: "response-generator",
+  description: "A response generator",
+  system: RESPONSE_PROMPT,
+  model: openai({
+    model: "gpt-4o-mini",
+  })
+});
 
+console.log("✅ responseGenerator created");
 
-    });
+const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
+console.log("📝 Fragment title output:", fragmentTitleOutput);
 
-    const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
-    const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
-    const generateFragmentTitle = () => {
-      if (fragmentTitleOutput[0].type !== "text") {
-        return "Fragment";
-      }
+const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
+console.log("🤖 Response output:", responseOutput);
 
-      if (Array.isArray(fragmentTitleOutput[0].content)) {
-        return fragmentTitleOutput[0].content.map((txt) => txt).join("")
-      } else{
-        return fragmentTitleOutput[0].content;
-      }
-    }
+const generateFragmentTitle = () => {
+  if (fragmentTitleOutput[0].type !== "text") {
+    return "Fragment";
+  }
 
-      const generateResponse = () => {
-      if (responseOutput[0].type !== "text") {
-        return "Response";
-      }
+  if (Array.isArray(fragmentTitleOutput[0].content)) {
+    return fragmentTitleOutput[0].content.map((txt) => txt).join("");
+  } else {
+    return fragmentTitleOutput[0].content;
+  }
+};
 
-      if (Array.isArray(responseOutput[0].content)) {
-        return responseOutput[0].content.map((txt) => txt).join("")
-      } else{
-        return responseOutput[0].content;
-      }
-    }
+const generateResponse = () => {
+  if (responseOutput[0].type !== "text") {
+    return "Response";
+  }
 
-    const isError = 
-      !result.state.data.summary ||
-      Object.keys(result.state.data.files || {}).length === 0;
+  if (Array.isArray(responseOutput[0].content)) {
+    return responseOutput[0].content.map((txt) => txt).join("");
+  } else {
+    return responseOutput[0].content;
+  }
+};
 
+console.log("📦 Result state data:", JSON.stringify(result.state.data, null, 2));
 
-    const sandboxUrl = await step.run("get-sandbox-url" , async () => {
-      const sandbox = await getSandbox(sandboxId);
-      const host = sandbox.getHost(3000);
-      return `https://${host}`;
-    });
+const isError =
+  !result.state.data.summary ||
+  Object.keys(result.state.data.files || {}).length === 0;
 
-    await step.run("save-result", async () =>{
+console.log("⚠️ isError value:", isError);
 
+const sandboxUrl = await step.run("get-sandbox-url", async () => {
+  const sandbox = await getSandbox(sandboxId);
+  const host = sandbox.getHost(3000);
+  const url = `https://${host}`;
+  console.log("🌐 Sandbox URL:", url);
+  return url;
+});
 
-      if(isError){
-        return await prisma.message.create({
-          data: {
-            projectId: event.data.projectId,
-            content: "Something went wrong.Please try again",
-            role:"ASSISTANT",
-            type: "ERROR",
-          },
-        });
-      }
-
-
+await step.run("save-result", async () => {
+  try {
+    if (isError) {
+      console.log("❌ Error detected: Missing summary or files");
       return await prisma.message.create({
         data: {
           projectId: event.data.projectId,
-          content : generateResponse(),
+          content: "Something went wrong. Please try again",
           role: "ASSISTANT",
-          type: "RESULT",
-          fragments: {
-            create: {
-              sandboxUrl: sandboxUrl,
-              title: generateFragmentTitle(),
-              files: result.state.data.files,
-            },
-          },
+          type: "ERROR",
         },
-      })
+      });
+    }
+
+    const responseText = generateResponse();
+    console.log("💾 About to save response:", responseText);
+
+    return await prisma.message.create({
+      data: {
+        projectId: event.data.projectId,
+        content: responseText,
+        role: "ASSISTANT",
+        type: "RESULT",
+      },
     });
+  } catch (err) {
+    console.error("🔥 Prisma save error:", err);
+    throw err;
+  }
+});
 
 
     
