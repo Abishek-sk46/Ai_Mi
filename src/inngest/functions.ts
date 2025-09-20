@@ -39,6 +39,14 @@ try {
   console.error("❌ Could not list sandbox files:", err);
 }
 
+// Check working directory
+try {
+  const cwd = await sandbox.commands.run("pwd");
+  console.log("📂 Sandbox working directory:", cwd);
+} catch (err) {
+  console.error("❌ Could not get working directory:", err);
+}
+
     const previousMessages = await step.run("get-previous-messages", async () => {
       const formattedMessages: Message[] = [];
 
