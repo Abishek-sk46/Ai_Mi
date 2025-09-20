@@ -298,7 +298,6 @@ export const codeAgentFunctions = inngest.createFunction(
     //   })
     // });
 
-// 1️⃣ Create response generator
 const responseGenerator = createAgent({
   name: "response-generator",
   description: "A response generator",
@@ -310,17 +309,19 @@ const responseGenerator = createAgent({
 
 console.log("✅ responseGenerator created");
 
-// 2️⃣ Run fragment title generator
+// 🔍 Log incoming result.state.data
+console.log("📦 Incoming result.state.data:", JSON.stringify(result.state.data, null, 2));
+
 const { output: fragmentTitleOutput } = await fragmentTitleGenerator.run(result.state.data.summary);
 console.log("📝 Fragment title output:", fragmentTitleOutput);
 
-// 3️⃣ Run response generator
 const { output: responseOutput } = await responseGenerator.run(result.state.data.summary);
 console.log("🤖 Response output:", responseOutput);
 
-// 4️⃣ Helper functions
 const generateFragmentTitle = () => {
-  if (fragmentTitleOutput[0].type !== "text") return "Fragment";
+  if (fragmentTitleOutput[0].type !== "text") {
+    return "Fragment";
+  }
 
   if (Array.isArray(fragmentTitleOutput[0].content)) {
     return fragmentTitleOutput[0].content.map((txt) => txt).join("");
@@ -330,7 +331,9 @@ const generateFragmentTitle = () => {
 };
 
 const generateResponse = () => {
-  if (responseOutput[0].type !== "text") return "Response";
+  if (responseOutput[0].type !== "text") {
+    return "Response";
+  }
 
   if (Array.isArray(responseOutput[0].content)) {
     return responseOutput[0].content.map((txt) => txt).join("");
@@ -339,15 +342,15 @@ const generateResponse = () => {
   }
 };
 
-// 5️⃣ Debug result state
-console.log("📦 Result state data:", JSON.stringify(result.state.data, null, 2));
-
+// 🔍 Debug isError evaluation
 const isError =
   !result.state.data.summary ||
   Object.keys(result.state.data.files || {}).length === 0;
-console.log("⚠️ isError value:", isError);
 
-// 6️⃣ Get sandbox URL
+console.log("⚠️ isError value:", isError);
+console.log("📄 Summary exists?", !!result.state.data.summary);
+console.log("📂 Files length:", Object.keys(result.state.data.files || {}).length);
+
 const sandboxUrl = await step.run("get-sandbox-url", async () => {
   const sandbox = await getSandbox(sandboxId);
   const host = sandbox.getHost(3000);
@@ -356,12 +359,8 @@ const sandboxUrl = await step.run("get-sandbox-url", async () => {
   return url;
 });
 
-// 7️⃣ Save result — this is where all messages get stored
 await step.run("save-result", async () => {
   try {
-    // Log before deciding if it's an error
-    console.log("📌 Checking if result is an error...");
-
     if (isError) {
       console.log("❌ Error detected: Missing summary or files");
       return await prisma.message.create({
@@ -377,7 +376,7 @@ await step.run("save-result", async () => {
     const responseText = generateResponse();
     console.log("💾 About to save response:", responseText);
 
-    const savedMessage = await prisma.message.create({
+    const saved = await prisma.message.create({
       data: {
         projectId: event.data.projectId,
         content: responseText,
@@ -386,14 +385,14 @@ await step.run("save-result", async () => {
       },
     });
 
-    console.log("✅ Response saved successfully:", savedMessage.id);
-    return savedMessage;
-
+    console.log("✅ Prisma save success:", saved);
+    return saved;
   } catch (err) {
     console.error("🔥 Prisma save error:", err);
     throw err;
   }
 });
+
 
 
 
