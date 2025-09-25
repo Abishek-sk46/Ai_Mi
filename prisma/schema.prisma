@@ -3,6 +3,7 @@ generator client {
   output   = "../src/generated/prisma"
 }
 
+// model connection configuration
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -50,8 +51,12 @@ enum MessageType {
   ERROR
 }
 
+
+// Usage credits tracking
 model Usage {
   key String @id
   points Int
   expire DateTime?
 }
+
+// npx prisma migrate dev
