@@ -1,1 +1,11 @@
-<svg id="logo-44" width="41" height="40" viewBox="0 0 41 40" fill="none" xmlns="http://www.w3.org/2000/svg"> <path d="M20 0C8.9543 0 0 8.9543 0 20C11.0457 20 20 11.0457 20 0Z" fill="#df9b8e" class="ccustom"></path> <path d="M20 40C31.0457 40 40 31.0457 40 20C28.9543 20 20 28.9543 20 40Z" fill="#df9b8e" class="ccustom"></path> <path d="M20 0C31.0457 0 40 8.9543 40 20C28.9543 20 20 11.0457 20 0Z" fill="#C96342" class="ccompli2"></path> <path d="M20 40C8.9543 40 -9.65645e-07 31.0457 0 20C11.0457 20 20 28.9543 20 40Z" fill="#C96342" class="ccompli2"></path> </svg>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" rx="112" fill="#2563EB"/>
+  
+  <line x1="152" y1="128" x2="152" y2="384" stroke="white" stroke-width="64"/>
+  
+  <!-- Top loop -->
+  <path d="M152 128 H 264 A 64 64 0 0 1 328 192 A 64 64 0 0 1 264 256 H 152" fill="none" stroke="white" stroke-width="64"/>
+  
+  <!-- Bottom loop -->
+  <path d="M152 256 H 296 A 64 64 0 0 1 360 320 A 64 64 0 0 1 296 384 H 152" fill="none" stroke="white" stroke-width="64"/>
+</svg>
