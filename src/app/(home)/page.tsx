@@ -9,7 +9,7 @@ const Page = () => {
         <div className="flex flex-col items-center">
             <Image
               src="/logo.svg"
-              alt="AI MI Logo"
+              alt="BUILDO Logo"
               width={50}
               height={50}
               className="hidden md:block"
@@ -17,12 +17,12 @@ const Page = () => {
             />
         </div>
         <h1 className="text-2xl md:text-5xl font-bold text-center ">
-          Build something with Vibe
+          Build websites with AI
 
         </h1>
 
         <p className="text-lg md:text-xl text-muted-foreground text-center">
-          Create apps and websites by chatting with AI
+          Turn ideas into production-ready websites with AI.
         </p>
 
         <div className="max-w-3l mx-auto w-full">
