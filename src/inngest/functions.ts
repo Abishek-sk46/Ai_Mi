@@ -5,6 +5,7 @@ import {  createAgent, createNetwork, createState, createTool, openai, Message, 
 import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 
 import { inngest } from "./client";
+import { getAsyncCtx } from "inngest/experimental";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 
 import { prisma } from "@/lib/db";
@@ -19,7 +20,13 @@ interface AgentState {
 export const codeAgentFunctions = inngest.createFunction(
   { id: "code-agent" },
   { event: "code-agent/run" },
-  async ({ event, step }) => {
+  async ({ event, step, ...args }) => {
+    // Patch async context for @inngest/agent-kit v0.8.x compatibility
+    const asyncCtx = (await getAsyncCtx()) as any;
+    if (asyncCtx && !asyncCtx.ctx) {
+      asyncCtx.ctx = { step, event, ...args };
+    }
+
     const sandboxId = await step.run("get-sandbox-id" , async () => {
       const sandbox = await Sandbox.create("vibe-prg1");
       await sandbox.setTimeout(SANDBOX_TIMEOUT);

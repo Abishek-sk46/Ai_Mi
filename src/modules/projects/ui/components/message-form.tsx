@@ -40,6 +40,7 @@ export const MessageForm = ({ projectId }: Props) => {
         defaultValues: {
             value: "",
         },
+        mode: "onChange",
     }); 
 
     const createMessage = useMutation(trpc.messages.create.mutationOptions({
