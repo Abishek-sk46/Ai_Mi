@@ -7,6 +7,7 @@ import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 import { inngest } from "./client";
 import { getAsyncCtx } from "inngest/experimental";
 import { executeCreateOrUpdateFilesTool } from "./files";
+import { executeReadFilesTool } from "./read-files";
 import {
   buildAgentSystemPrompt,
   executeRestoreProjectFiles,
@@ -217,31 +218,21 @@ try {
             return toolResult;
           },
         }),
-      createTool({
-        name: "readFiles",
-        description: "Read Files from the sandbox",
-        parameters:z.object({
-          files: z.array(z.string()),
-
+        createTool({
+          name: "readFiles",
+          description: "Read project-relative files from the sandbox",
+          parameters: z.object({
+            files: z.array(z.string()),
+          }),
+          handler: async ({ files }, { step }) => {
+            return await executeReadFilesTool({
+              files,
+              sandboxId,
+              getSandbox,
+              step,
+            });
+          },
         }),
-        handler: async ({ files }, {step}) =>{
-          return await step?.run("readFiles", async () => {
-            try{
-              const sandbox = await getSandbox(sandboxId);
-              const contents = [];
-              for (const file of files){
-                const content = await sandbox.files.read(file);
-                contents.push({ path: file, content});
-
-              }
-              return JSON.stringify(contents);
-            }catch (e){
-              return "Error: "+e;
-            }
-          });
-        }
-
-      })
 
       ],
       lifecycle: {
