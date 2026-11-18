@@ -28,9 +28,12 @@ import {
     BreadcrumbEllipsis,
 } from "@/components/ui/breadcrumb";
 import { TreeView } from "./tree-view";
-
-
-type FileCollection = { [path: string]: string };
+import {
+    type FileCollection,
+    getFileContent,
+    getInitialSelectedFile,
+    hasFile,
+} from "./file-explorer-utils";
 
 function getLanguageFromExtension(filename: string): string {
     const extension = filename.split(".").pop()?.toLowerCase();
@@ -118,33 +121,34 @@ export const FileExplorer = ({
 }: FileExplorerProps) => {
 
     const [copied, setCopied] = useState(false);
-    const [selectedFile, setSelectedFile] = useState<string | null>(() => {
-        const fileKeys = Object.keys(files);
-        return fileKeys.length > 0 ? fileKeys[0] : null;
-    });
+    const [selectedFile, setSelectedFile] = useState<string | null>(() =>
+        getInitialSelectedFile(files)
+    );
 
     const treeData = useMemo(() => {
         return convertFilesToTreeItems(files);
     }, [files])
 
     const handleFileSelect = useCallback((filePath: string) => {
-        if(files[filePath]) {
+        if (hasFile(files, filePath)) {
             setSelectedFile(filePath);
         }
 
     }, [files]);
 
     const handleCopy = useCallback(() => {
-        if (selectedFile){
-            navigator.clipboard.writeText(files[selectedFile])
-                setCopied(true);
-                setTimeout(() => {
-                    setCopied(false);
-                }
-                , 2000);
+        const content = getFileContent(files, selectedFile);
+        if (content !== null) {
+            navigator.clipboard.writeText(content);
+            setCopied(true);
+            setTimeout(() => {
+                setCopied(false);
+            }, 2000);
         }
 
     }, [selectedFile, files]);
+
+    const selectedContent = getFileContent(files, selectedFile);
 
     return (
         <ResizablePanelGroup direction="horizontal" className="h-full">
@@ -161,7 +165,7 @@ export const FileExplorer = ({
             <ResizableHandle className="hover:bg-primary transition-colors" />
 
             <ResizablePanel defaultSize={70} minSize={50}>
-                {selectedFile && files[selectedFile] ? (
+                {selectedFile !== null && selectedContent !== null ? (
 
                     
 
@@ -183,7 +187,7 @@ export const FileExplorer = ({
 
                     <div className="flex-1 overflow-auto">
                         <CodeView
-                        code={files[selectedFile]}
+                        code={selectedContent}
                         lang = {getLanguageFromExtension(selectedFile)}
 
                         
