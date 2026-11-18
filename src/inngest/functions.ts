@@ -6,6 +6,7 @@ import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 
 import { inngest } from "./client";
 import { getAsyncCtx } from "inngest/experimental";
+import { executeCreateOrUpdateFilesTool } from "./files";
 import { executeTerminalTool } from "./terminal";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 
@@ -115,46 +116,27 @@ try {
           },
         }),
 
-      createTool({
-        name: "createOrUpdateFiles",
-        description: "Create or update files in the sandbox",
-        parameters: z.object({
-          files: z.array(
-            z.object({
-              path : z.string(),
-              content: z.string(),
-            }),
-          ),
+        createTool({
+          name: "createOrUpdateFiles",
+          description: "Create or update files in the sandbox",
+          parameters: z.object({
+            files: z.array(
+              z.object({
+                path: z.string(),
+                content: z.string(),
+              }),
+            ),
+          }),
+          handler: async ({ files }, { step, network }: Tool.Options<AgentState>) => {
+            return await executeCreateOrUpdateFilesTool({
+              files,
+              sandboxId,
+              getSandbox,
+              network,
+              step,
+            });
+          },
         }),
-        handler: async ({ files }, { step, network }: Tool.Options<AgentState> ) => {
-          const newFiles = await step?.run("CreateOrUpdateFiles", async () => {
-            try{
-              const updatedFiles = network.state.data.files || {};
-              const sandbox = await getSandbox(sandboxId);
-
-                function sanitizeCode(content: string) {
-                  return content.replace(/```(typescript|tsx|js|javascript)?/g, "").trim();
-              }
-
-              for (const file of files) {
-                file.content = sanitizeCode(file.content);
-                await sandbox.files.write(file.path, file.content);
-                updatedFiles[file.path] = file.content;
-              }
-              return updatedFiles;
-              
-            }
-            catch (e) {
-              return "Error: " + e;
-            }
-          });
-
-          if(typeof newFiles === "object"){
-            network.state.data.files = newFiles;
-          }
-
-        }
-      }),
       createTool({
         name: "readFiles",
         description: "Read Files from the sandbox",
