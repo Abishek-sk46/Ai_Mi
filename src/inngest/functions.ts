@@ -7,6 +7,14 @@ import { FRAGMENT_TITLE_PROMPT, PROMPT, RESPONSE_PROMPT } from "@/prompt";
 import { inngest } from "./client";
 import { getAsyncCtx } from "inngest/experimental";
 import { executeCreateOrUpdateFilesTool } from "./files";
+import {
+  buildAgentSystemPrompt,
+  executeRestoreProjectFiles,
+  loadProjectFileSnapshot,
+  reconcileFileWriteErrors,
+  reconcileTerminalRecovery,
+  shouldPersistFragment,
+} from "./restore";
 import { executeTerminalTool } from "./terminal";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 
@@ -15,12 +23,16 @@ import { SANDBOX_TIMEOUT } from "./types";
 
 
 interface AgentState {
-  summary : string;
-  files: { [path: string] : string};
-};
+  summary: string;
+  files: { [path: string]: string };
+  unresolvedFileErrors: Record<string, string>;
+}
 
 export const codeAgentFunctions = inngest.createFunction(
-  { id: "code-agent" },
+  {
+    id: "code-agent",
+    concurrency: [{ key: "event.data.projectId", limit: 1 }],
+  },
   { event: "code-agent/run" },
   async ({ event, step, ...args }) => {
     // Patch async context for @inngest/agent-kit v0.8.x compatibility
@@ -29,11 +41,57 @@ export const codeAgentFunctions = inngest.createFunction(
       asyncCtx.ctx = { step, event, ...args };
     }
 
+    const previousSnapshot = await step.run("get-previous-files", async () => {
+      return await loadProjectFileSnapshot(prisma, event.data.projectId);
+    });
+
+    if (previousSnapshot.invalidHistoricalEntries.length > 0) {
+      console.warn(
+        `[code-agent] Skipped ${previousSnapshot.invalidHistoricalEntries.length} invalid historical file entries for project ${event.data.projectId}:`,
+        previousSnapshot.invalidHistoricalEntries
+      );
+    }
+
     const sandboxId = await step.run("get-sandbox-id" , async () => {
       const sandbox = await Sandbox.create("vibe-prg1");
       await sandbox.setTimeout(SANDBOX_TIMEOUT);
       return sandbox.sandboxId;
     });
+
+    const restoreResult = await executeRestoreProjectFiles({
+      files: previousSnapshot.files,
+      sandboxId,
+      getSandbox,
+      step,
+    });
+
+    if (!restoreResult.ok) {
+      console.error(
+        `[code-agent] Project file restoration failed for project ${event.data.projectId}:`,
+        restoreResult.error,
+        restoreResult.failedFiles
+      );
+
+      await step.run("save-restore-error", async () => {
+        return await prisma.message.create({
+          data: {
+            projectId: event.data.projectId,
+            content:
+              "Something went wrong while restoring your previous project files. Please try again.",
+            role: "ASSISTANT",
+            type: "ERROR",
+          },
+        });
+      });
+
+      return {
+        url: null,
+        title: "Error",
+        files: {},
+        summary: "",
+        error: restoreResult.error,
+      };
+    }
 
     // debug
     // After creating the sandbox
@@ -80,10 +138,13 @@ try {
       
     });
 
+    const restoredFilePaths = Object.keys(previousSnapshot.files);
+
     const state = createState<AgentState>(
       {
-        summary : "",
-        files:{},
+        summary: "",
+        files: { ...previousSnapshot.files },
+        unresolvedFileErrors: {},
       },
       {
         messages: previousMessages,
@@ -93,7 +154,7 @@ try {
     const codeagent = createAgent<AgentState>({
       name: "code-agent",
       description: "An expert coding agent",
-      system: PROMPT,
+      system: buildAgentSystemPrompt(PROMPT, restoredFilePaths),
       model: openai({
          model: "gpt-4o",
          defaultParameters: { temperature: 0.5 },
@@ -106,13 +167,23 @@ try {
             command: z.string(),
           }),
 
-          handler: async ({ command }, { step }) => {
-            return await executeTerminalTool({
+          handler: async ({ command }, { step, network }: Tool.Options<AgentState>) => {
+            const toolResult = await executeTerminalTool({
               command,
               sandboxId,
               getSandbox,
               step,
             });
+
+            if (network) {
+              network.state.data.unresolvedFileErrors = reconcileTerminalRecovery(
+                network.state.data.unresolvedFileErrors || {},
+                command,
+                toolResult
+              );
+            }
+
+            return toolResult;
           },
         }),
 
@@ -128,13 +199,22 @@ try {
             ),
           }),
           handler: async ({ files }, { step, network }: Tool.Options<AgentState>) => {
-            return await executeCreateOrUpdateFilesTool({
+            const toolResult = await executeCreateOrUpdateFilesTool({
               files,
               sandboxId,
               getSandbox,
               network,
               step,
             });
+
+            if (network) {
+              network.state.data.unresolvedFileErrors = reconcileFileWriteErrors(
+                network.state.data.unresolvedFileErrors || {},
+                toolResult
+              );
+            }
+
+            return toolResult;
           },
         }),
       createTool({
@@ -249,9 +329,12 @@ try {
       }
     }
 
-    const isError = 
-      !result.state.data.summary ||
-      Object.keys(result.state.data.files || {}).length === 0;
+    const isError = !shouldPersistFragment({
+      summary: result.state.data.summary,
+      files: result.state.data.files,
+      restoredFileCount: restoredFilePaths.length,
+      unresolvedFileErrors: result.state.data.unresolvedFileErrors || {},
+    });
 
 
     const sandboxUrl = await step.run("get-sandbox-url" , async () => {
