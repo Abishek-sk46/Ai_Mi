@@ -32,9 +32,10 @@ export const messagesRouter = createTRPCRouter({
         },
 
 
-        orderBy: {
-          updatedAt: "asc",
-        },
+        orderBy: [
+          { updatedAt: "asc" },
+          { createdAt: "asc" },
+        ],
       });
       return messages;
     }),
@@ -95,13 +96,14 @@ export const messagesRouter = createTRPCRouter({
         },
       });
 
-    await inngest.send({
-        name:"code-agent/run",
+      await inngest.send({
+        name: "code-agent/run",
         data: {
-            value: input.value,
-            projectId: input.projectId,
-        }
-    });
+          value: input.value,
+          projectId: input.projectId,
+          userMessageId: createdMessage.id,
+        },
+      });
 
 
       return createdMessage;

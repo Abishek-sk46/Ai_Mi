@@ -115,26 +115,28 @@ export const projectsRouter = createTRPCRouter({
           userId: ctx.auth.userId,
           name: generateSlug(2, {
             format: "kebab",
-
           }),
           messages: {
             create: {
               content: input.value,
               role: "USER",
               type: "RESULT",
-            }
-          }
-        }
+            },
+          },
+        },
+        include: {
+          messages: true,
+        },
       });
 
-
-
+      const initialUserMessage = createdProject.messages?.[0];
 
       await inngest.send({
         name: "code-agent/run",
         data: {
           value: input.value,
           projectId: createdProject.id,
+          userMessageId: initialUserMessage?.id,
         },
       });
 
